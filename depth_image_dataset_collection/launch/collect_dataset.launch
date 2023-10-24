@@ -1,0 +1,45 @@
+<launch>
+    <arg name='paths_to_envs' default='/home/lorenzo/gazebo_worlds/modified_playpen'/>
+    <arg name='n_samples_per_env' default='10000'/>
+    <arg name='robot_name' default='husky'/>
+    <arg name='pointcloud_topic' default='/points'/>
+    <arg name='image_topic' default='/depth_image'/>
+    <arg name='dataset_name' default='test_dataset_depth_image'/>
+    <arg name='height' default='16'/>
+    <arg name='width' default='1000'/>
+    <arg name="max_vertical_angle" value="15.0"/>
+    <arg name="min_vertical_angle" value="-15.0"/>
+    <arg name="max_horizontal_angle" value="180.0"/>
+    <arg name="min_horizontal_angle" value="-180.0"/>
+    <arg name='max_distance' default='30'/>
+    <arg name='invert_distance' default='True'/>
+    <arg name='normalize_image' default='False'/>
+    <env name="ROSCONSOLE_CONFIG_FILE" 
+    value="$(find lidar_to_other)/config/rosconsole/debug.conf"/>
+
+    <node name='ptcl_to_depth_image' type="pointcloud_to_depth_image" pkg="lidar_to_other" output="screen">
+        <param name="input_topic" value="$(arg pointcloud_topic)"/>
+        <param name="output_topic" value="$(arg image_topic)"/>
+        <param name="height" value="$(arg height)"/>
+        <param name="width" value="$(arg width)"/>
+        <param name="max_vertical_angle" value="$(arg max_vertical_angle)"/>
+        <param name="min_vertical_angle" value="$(arg min_vertical_angle)"/>
+        <param name="max_horizontal_angle" value="$(arg max_horizontal_angle)"/>
+        <param name="min_horizontal_angle" value="$(arg min_horizontal_angle)"/>
+        <param name="max_distance" value="$(arg max_distance)"/>
+        <param name="invert_distance" value="$(arg invert_distance)"/>
+        <param name="normalize_image" value="$(arg normalize_image)"/>
+    </node>
+    <node name='dataset_collection_node' type="collect_dataset_node.py" pkg="depth_image_dataset_collection" output="screen">
+        <param name="paths_to_envs" value="$(arg paths_to_envs)"/>
+        <param name="n_samples_per_env" value="$(arg n_samples_per_env)"/>
+        <param name="robot_name" value="$(arg robot_name)"/>
+        <param name="image_topic" value="$(arg image_topic)"/>
+        <param name="dataset_name" value="$(arg dataset_name)"/>
+        <param name="height" value="$(arg height)"/>
+        <param name="width" value="$(arg width)"/>
+        <param name="max_distance" value="$(arg max_distance)"/>
+        <param name="inverted_distance" value="$(arg invert_distance)"/>
+        <param name="normalized_image" value="$(arg normalize_image)"/>
+    </node> 
+</launch>
