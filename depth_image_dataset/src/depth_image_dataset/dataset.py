@@ -3,6 +3,8 @@ import math
 import numpy as np
 from tqdm import tqdm
 import roslaunch
+
+
 def T_to_xyzrpy(T):
     translation = T[:3, 3]
     x, y, z = translation
@@ -61,7 +63,9 @@ def xyzrpyw_to_T(x, y, z, roll, pitch, yaw):
     rotation_matrix = np.dot(np.dot(rotation_yaw, rotation_pitch), rotation_roll)
     transformation_matrix = np.dot(translation_matrix, rotation_matrix)
     return transformation_matrix
-def gen_label(self, transform1, transform2):
+
+
+def gen_label(transform1, transform2):
     x1, y1, z1, r1, p1, yw1 = transform1
     x2, y2, z2, r2, p2, yw2 = transform2
     T1 = xyzrpyw_to_T(x1, y1, z1, r1, p1, yw1)
@@ -69,7 +73,8 @@ def gen_label(self, transform1, transform2):
     T12 = np.dot(np.linalg.inv(T1), T2)
     x, y, z, roll, pitch, yaw = T_to_xyzrpy(T12)
     dist = np.linalg.norm(np.array([x, y, z]))
-    return (dist,)  # roll, pitch, yaw 
+    return (dist,)  # roll, pitch, yaw
+
 
 class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
     required_identifiers = []
@@ -112,16 +117,31 @@ class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
                 ] += self.samples_to_generate - sum(samples_to_generate_per_datafolder)
         print("Generating samples")
         start_idx = 0
-        
-        self.__inputs[start_idx+n_sample] = [None for _ in range(self.samples_to_generate)] 
-        self.__labels[start_idx+n_sample] = [None for _ in range(self.samples_to_generate)]
-        for n_datafolder, n_samples_to_generate in tqdm(enumerate(samples_to_generate_per_datafolder), desc='Env progression'):
+
+        self.__inputs[start_idx + n_sample] = [
+            None for _ in range(self.samples_to_generate)
+        ]
+        self.__labels[start_idx + n_sample] = [
+            None for _ in range(self.samples_to_generate)
+        ]
+        for n_datafolder, n_samples_to_generate in tqdm(
+            enumerate(samples_to_generate_per_datafolder), desc="Env progression"
+        ):
             start_idx_for_loaded = sum(n_datapoints_per_datafolder[:n_datafolder])
-            end_idx_for_loaded = sum(n_datapoints_per_datafolder[n_datafolder:n_datafolder+1])
-            for n_sample in tqdm(range(n_samples_to_generate),desc="Gen samples"):
-                idx1, idx2 = np.random.randint(start_idx_for_loaded, end_idx_for_loaded,2)
-                self.__inputs[start_idx+n_sample] = (self.__loaded_inputs[idx1],self.__loaded_inputs[idx2])
-                self.__labels[start_idx+n_sample] = gen_label(self.__loaded_labels[idx1],self.__loaded_labels[idx1])
+            end_idx_for_loaded = sum(
+                n_datapoints_per_datafolder[n_datafolder : n_datafolder + 1]
+            )
+            for n_sample in tqdm(range(n_samples_to_generate), desc="Gen samples"):
+                idx1, idx2 = np.random.randint(
+                    start_idx_for_loaded, end_idx_for_loaded, 2
+                )
+                self.__inputs[start_idx + n_sample] = (
+                    self.__loaded_inputs[idx1],
+                    self.__loaded_inputs[idx2],
+                )
+                self.__labels[start_idx + n_sample] = gen_label(
+                    self.__loaded_labels[idx1], self.__loaded_labels[idx1]
+                )
             start_idx += n_samples_to_generate
 
     def import_args(self, samples_to_generate):
