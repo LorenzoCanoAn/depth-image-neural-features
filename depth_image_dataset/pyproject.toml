@@ -2,10 +2,10 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
-name = "depth_image_neural_features"
+name = "depth_image_dataset"
 version = "0.0.1"
 authors = [{ name = "Lorenzo Cano", email = "lcano@unizar.es" }]
-description = "Neural networks for depth image features extraction"
+description = "Dataset utilities for training depth_image features"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]
@@ -15,5 +15,5 @@ only-packages = true
 sources = ["src"]
 [tool.hatch.build.targets.wheel]
 only-include = ["src"]
-packages = ["src/depth_image_neural_features"]
+packages = ["src/depth_image_dataset"]
 
