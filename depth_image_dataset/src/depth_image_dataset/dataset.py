@@ -77,7 +77,7 @@ def gen_label(transform1, transform2):
 
 
 class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
-    required_identifiers = []
+    xrequired_identifiers = ["height", "width", "max_distance",'inverted_distance', 'normalized_image']
 
     def __init__(
         self,
