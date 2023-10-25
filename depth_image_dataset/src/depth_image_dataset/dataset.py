@@ -2,7 +2,7 @@ from dataset_management.dataset import DatasetFileManagerToPytorchDataset
 import math
 import numpy as np
 from tqdm import tqdm
-import roslaunch
+import torch
 
 
 def T_to_xyzrpy(T):
@@ -77,15 +77,21 @@ def gen_label(transform1, transform2):
 
 
 class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
-    xrequired_identifiers = ["height", "width", "max_distance",'inverted_distance', 'normalized_image']
+    xrequired_identifiers = [
+        "height",
+        "width",
+        "max_distance",
+        "inverted_distance",
+        "normalized_image",
+    ]
 
     def __init__(
         self,
         name=None,
         mode="read",
-        identifiers=...,
-        unwanted_characteristics=...,
-        samples_to_generate=None,
+        identifiers=dict(),
+        unwanted_characteristics=dict(),
+        samples_to_generate=100,
     ):
         super().__init__(
             name,
@@ -96,13 +102,13 @@ class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
         )
 
     def process_raw_inputs(self):
-        # __loaded_inputs is a torch array of N images in grayscale
-        # __loaded_labels is a torch array of N vectors of x,y,z,roll,pitch,yaw,environment number,and code
+        # _loaded_inputs is a torch array of N images in grayscale
+        # _loaded_labels is a torch array of N vectors of x,y,z,roll,pitch,yaw,environment number,and code
         # In the same dataset there can be more than one env -> it is necessary to create the labels env per env
         n_datapoints_per_datafolder = [
             datafolder.n_files for datafolder in self.input_manager.selected_datafolders
         ]
-        total_datapoints = len(self.__loaded_labels)
+        total_datapoints = len(self._loaded_labels)
         if total_datapoints == self.samples_to_generate:
             samples_to_generate_per_datafolder = n_datapoints_per_datafolder
         else:
@@ -115,33 +121,29 @@ class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
                 samples_to_generate_per_datafolder[
                     -1
                 ] += self.samples_to_generate - sum(samples_to_generate_per_datafolder)
-        print("Generating samples")
         start_idx = 0
-
-        self.__inputs[start_idx + n_sample] = [
-            None for _ in range(self.samples_to_generate)
-        ]
-        self.__labels[start_idx + n_sample] = [
-            None for _ in range(self.samples_to_generate)
-        ]
+        self._inputs = [None for _ in range(self.samples_to_generate)]
+        self._labels = [None for _ in range(self.samples_to_generate)]
         for n_datafolder, n_samples_to_generate in tqdm(
             enumerate(samples_to_generate_per_datafolder), desc="Env progression"
         ):
             start_idx_for_loaded = sum(n_datapoints_per_datafolder[:n_datafolder])
-            end_idx_for_loaded = sum(
-                n_datapoints_per_datafolder[n_datafolder : n_datafolder + 1]
-            )
+            end_idx_for_loaded = sum(n_datapoints_per_datafolder[: n_datafolder + 1])
             for n_sample in tqdm(range(n_samples_to_generate), desc="Gen samples"):
-                idx1, idx2 = np.random.randint(
-                    start_idx_for_loaded, end_idx_for_loaded, 2
-                )
-                self.__inputs[start_idx + n_sample] = (
-                    self.__loaded_inputs[idx1],
-                    self.__loaded_inputs[idx2],
-                )
-                self.__labels[start_idx + n_sample] = gen_label(
-                    self.__loaded_labels[idx1], self.__loaded_labels[idx1]
-                )
+                while True:
+                    idx1, idx2 = np.random.randint(
+                        start_idx_for_loaded, end_idx_for_loaded, 2
+                    )
+                    self._inputs[start_idx + n_sample] = (
+                        self._loaded_inputs[idx1],
+                        self._loaded_inputs[idx2],
+                    )
+                    distance = gen_label(
+                        self._loaded_labels[idx1], self._loaded_labels[idx2]
+                    )
+                    self._labels[start_idx + n_sample] = torch.Tensor(distance)
+                    if distance[0] < 1.5:
+                        break
             start_idx += n_samples_to_generate
 
     def import_args(self, samples_to_generate):
