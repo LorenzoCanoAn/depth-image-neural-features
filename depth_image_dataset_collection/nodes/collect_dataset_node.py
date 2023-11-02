@@ -87,6 +87,14 @@ class ImageTopicStorage:
         return self.last_msg
 
 
+def stack_image(image, n_stackings):
+    height, width = image.shape
+    assert width % 2**n_stackings == 0
+    for n_stack in range(1, n_stackings + 1):
+        new_width = int(width / 2**n_stack)
+        image = np.vstack((image[:, :new_width], image[:, new_width:]))
+    return image
+
 dataset_type = DepthImageDistanceFeaturesDataset
 
 
@@ -96,13 +104,16 @@ class DatasetCollectionNode:
         # Get params
         # -----------------------------------------------------------------------
         self.paths_to_envs = rospy.get_param("~paths_to_envs").split(",")
-        self.n_samples_per_env = rospy.get_param("~n_samples_per_env")
+        self.n_poses_per_env = rospy.get_param("~n_poses_per_env")
+        self.n_orientations_per_pose = rospy.get_param("~n_orientations_per_pose")
         self.robot_name = rospy.get_param("~robot_name")
         self.image_topic = rospy.get_param("~image_topic")
         self.dataset_name = rospy.get_param("~dataset_name")
+        self.n_stackings = rospy.get_param("~n_stackings")
         identifiers = dict()
         for necessary_key in dataset_type.required_identifiers:
             identifiers[necessary_key] = rospy.get_param("~" + necessary_key)
+        identifiers["n_stackings"] = self.n_stackings
         # -----------------------------------------------------------------------
         self.ros_thread = threading.Thread(target=self.ros_thread_target)
         self.dataset = dataset_type(
@@ -139,21 +150,23 @@ class DatasetCollectionNode:
             free_space_file = os.path.join(path_to_env, "free_space.json")
             with open(free_space_file, "r") as f:
                 free_space_info = json.load(f)
-            for i in tqdm(range(self.n_samples_per_env)):
+            for _ in tqdm(range(self.n_poses_per_env)):
                 xy1 = gen_pose_from_free_space(free_space_info)
-                pose = (
-                    xy1.x,
-                    xy1.y,
-                    0.181821,
-                    0,
-                    0,
-                    np.random.uniform(0, 2 * np.pi),
-                )
-                self.move_robot(pose)
-                image = self.image_storage.block(n_msgs=2)
-                if len(image.shape) == 2:
-                    image = np.expand_dims(image, 0)
-                self.dataset.write_datapoint(input_data=image, label=pose)
+                for _ in range(self.n_orientations_per_pose):
+                    pose = (
+                        xy1.x,
+                        xy1.y,
+                        0.18,
+                        0,
+                        0,
+                        np.random.uniform(0, 2 * np.pi),
+                    )
+                    self.move_robot(pose)
+                    image = self.image_storage.block(n_msgs=2)
+                    image = stack_image(image, self.n_stackings)
+                    if len(image.shape) == 2:
+                        image = np.expand_dims(image, 0)
+                    self.dataset.write_datapoint(input_data=image, label=pose)
         rospy.signal_shutdown("Dataset collected")
         self.ros_thread.join()
 
