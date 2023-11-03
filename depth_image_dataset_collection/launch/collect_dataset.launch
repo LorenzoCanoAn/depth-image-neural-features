@@ -5,7 +5,7 @@
     <arg name='robot_name' default='husky'/>
     <arg name='pointcloud_topic' default='/points'/>
     <arg name='image_topic' default='/depth_image'/>
-    <arg name='dataset_name' default='depth_image_with_3_stackings'/>
+    <arg name='dataset_name' default='depth_image_with_3_stackings_inveted_normalized'/>
     <arg name='height' default='16'/>
     <arg name='width' default='1024'/>
     <arg name="max_vertical_angle" value="15.0"/>
@@ -13,8 +13,8 @@
     <arg name="max_horizontal_angle" value="180.0"/>
     <arg name="min_horizontal_angle" value="-180.0"/>
     <arg name='max_distance' default='30'/>
-    <arg name='invert_distance' default='0'/>
-    <arg name='normalize_image' default='False'/>
+    <arg name='invert_distance' default='true'/>
+    <arg name='normalize_image' default='true'/>
     <arg name='n_stackings' default='3'/>
     <arg name='void_value' default='0'/>
     <env name="ROSCONSOLE_CONFIG_FILE" 
