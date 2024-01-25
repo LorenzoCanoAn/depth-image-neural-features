@@ -10,9 +10,6 @@
 			"path": "../.."
 		},
 		{
-			"path": "../../../PyTorch-VAE"
-		},
-		{
 			"path": "../../../dataset-management"
 		},
 		{
