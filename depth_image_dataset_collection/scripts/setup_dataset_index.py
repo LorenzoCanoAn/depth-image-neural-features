@@ -16,7 +16,7 @@ from cv_bridge import CvBridge
 import threading
 
 PARAMETERS = {
-    "density": 20,
+    "density": 200,
     "image_height": 16,
     "image_width": 1024,
     "max_distance": 50,

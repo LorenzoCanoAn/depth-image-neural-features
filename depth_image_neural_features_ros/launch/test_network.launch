@@ -10,7 +10,7 @@
     <arg name='max_distance' default='30'/>
     <arg name='invert_distance' default='True'/>
     <arg name='normalize_image' default='True'/>
-    <arg name='path_to_model' default='$(env HOME)/models/retrain_last_hope_with_dropout/123.torch'/>
+    <arg name='path_to_model' default='$(env HOME)/models/retrain_last_hope_with_dropout/last.torch'/>
     <arg name='distance_estimation' default='distance_estimation'/>
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find lidar_to_other)/config/rosconsole/debug.conf"/>
     <env name="HUSKY_LASER_3D_ENABLED" value="true"/>
