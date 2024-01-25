@@ -2,7 +2,7 @@ import warnings
 from collections import namedtuple
 from functools import partial
 from typing import Any, Callable, List, Optional, Tuple
-from torchsummary import summary
+from torchinfo import summary
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

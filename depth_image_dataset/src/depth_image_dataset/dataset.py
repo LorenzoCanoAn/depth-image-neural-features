@@ -1,4 +1,5 @@
 from dataset_management.dataset import DatasetFileManagerToPytorchDataset
+from dataset_management.dataset_io import DataFoldersManager
 import math
 import numpy as np
 from tqdm import tqdm
@@ -91,7 +92,7 @@ def gen_label(transform1, transform2):
     T12 = np.dot(np.linalg.inv(T1), T2)
     x, y, z, roll, pitch, yaw = T_to_xyzrpy(T12)
     qx, qy, qz, qw = euler_to_quaternion(yaw, pitch, roll)
-    return x, y, z, qx, qy, qz, qw
+    return x, y#, z#, qx, qy, qz, qw
 
 
 class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
@@ -106,18 +107,23 @@ class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
 
     def __init__(
         self,
+        datafolders_manager=DataFoldersManager.get_current_instance("depth_image_feature_extraction"),
         name=None,
         mode="read",
         identifiers=dict(),
         unwanted_characteristics=dict(),
+        samples_to_load = None,
         samples_to_generate=100,
         prob_of_same_pose_sample=0.5,
     ):
+        self.samples_to_load=samples_to_load
         super().__init__(
+            datafolders_manager,
             name,
             mode,
             identifiers,
             unwanted_characteristics,
+            samples_to_load=samples_to_load,
             samples_to_generate=samples_to_generate,
             prob_of_same_pose_sample=prob_of_same_pose_sample,
         )
@@ -152,26 +158,27 @@ class DepthImageDistanceFeaturesDataset(DatasetFileManagerToPytorchDataset):
             self.end_idx_for_loaded = sum(
                 n_datapoints_per_datafolder[: n_datafolder + 1]
             )
-
-            for n_sample in tqdm(range(n_samples_to_generate), desc="Gen samples"):
-                self.calc_sample(n_sample)
+            if self.samples_to_load is None:
+                n_datapoints_in_folder = n_datapoints_per_datafolder[n_datafolder]
+            else:
+                n_datapoints_in_folder = self.samples_to_load
+            idx1s = random_non_repeat_ints(n_datapoints_in_folder,n_samples_to_generate)
+            for n_sample,idx1 in tqdm(enumerate(idx1s), desc="Gen samples",total=len(idx1s)):
+                self.calc_sample(n_sample,idx1=idx1)
             self.start_idx += n_samples_to_generate
 
-    def calc_sample(self, n_sample):
+    def calc_sample(self, n_sample,idx1=None):
         while True:
-            idx1 = random.randint(
-                self.start_idx_for_loaded, self.end_idx_for_loaded - 1
+            idx2 = random.randint(0,self.samples_to_load-1
             )
-            idx2 = random.randint(
-                self.start_idx_for_loaded, self.end_idx_for_loaded - 1
-            )
+            label = gen_label(self._loaded_labels[idx1], self._loaded_labels[idx2])
+            if np.linalg.norm(np.array(label),ord=2) > 3:
+                continue
             img1 = self._loaded_inputs[idx1]
             img2 = self._loaded_inputs[idx2]
             self._inputs[self.start_idx + n_sample] = (img1, img2)
-            distance = gen_label(self._loaded_labels[idx1], self._loaded_labels[idx2])
-            self._labels[self.start_idx + n_sample] = torch.Tensor(distance)
-            if distance[0] < 1.5:
-                break
+            self._labels[self.start_idx + n_sample] = torch.Tensor(label)
+            break
 
     def import_args(self, samples_to_generate, prob_of_same_pose_sample):
         self.samples_to_generate = samples_to_generate
@@ -194,3 +201,19 @@ def unfold_image(image, n_folds):
         new_height = int(height / 2**n_stack)
         image = np.hstack((image[:new_height, :], image[:, new_height:]))
     return image
+
+def random_non_repeat_ints(max_int, num_ints)->np.ndarray:
+    n_repeats = int(np.floor(num_ints/max_int))
+    if n_repeats == 0:
+        ints = np.arange(0,max_int,dtype=int)
+        np.random.shuffle(ints)
+        ints = ints[:num_ints]
+    else:
+        ints = np.arange(0,max_int,dtype=int)
+        np.random.shuffle(ints)
+        ints =ints[:(num_ints-n_repeats*max_int)] 
+        for _ in range(n_repeats):
+            ints_to_cat = np.arange(0,max_int,dtype=int)
+            np.random.shuffle(ints_to_cat)
+            ints = np.concatenate((ints,ints_to_cat))
+    return ints

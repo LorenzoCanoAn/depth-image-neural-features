@@ -1,0 +1,26 @@
+{
+	"folders": [
+		{
+			"path": "../../../procedural-subt-gen"
+		},
+		{
+			"path": "../../../ptcl-neural-features"
+		},
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../PyTorch-VAE"
+		},
+		{
+			"path": "../../../dataset-management"
+		},
+		{
+			"path": "../../../../lorenzo_catkin_ws/src/lidar-to-other-ros"
+		},
+		{
+			"path": "../../../../lorenzo_catkin_ws/src"
+		}
+	],
+	"settings": {}
+}

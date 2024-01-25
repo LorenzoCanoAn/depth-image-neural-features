@@ -110,14 +110,28 @@ class DatasetCollectionNode:
         self.image_topic = rospy.get_param("~image_topic")
         self.dataset_name = rospy.get_param("~dataset_name")
         self.n_stackings = rospy.get_param("~n_stackings")
+        self.height = rospy.get_param("~height")
+        self.width = rospy.get_param("~width")
+        self.max_distance = rospy.get_param("~max_distance")
+        self.invert_distance = rospy.get_param("~invert_distance")
+        self.normalize_image = rospy.get_param("~normalize_image")
+        self.void_value = rospy.get_param("~void_value")
+        self.max_incl = rospy.get_param("~max_incl")
         identifiers = dict()
         for necessary_key in dataset_type.required_identifiers:
             identifiers[necessary_key] = rospy.get_param("~" + necessary_key)
         identifiers["n_stackings"] = self.n_stackings
+        identifiers["height"] = self.height
+        identifiers["width"] = self.width
+        identifiers["max_distance"] = self.max_distance
+        identifiers["invert_distance"] = self.invert_distance
+        identifiers["normalize_image"] = self.normalize_image
+        identifiers["void_value"] = self.void_value
+        identifiers["max_incl"] = self.max_incl
         # -----------------------------------------------------------------------
         self.ros_thread = threading.Thread(target=self.ros_thread_target)
         self.dataset = dataset_type(
-            self.dataset_name, mode="write", identifiers=identifiers
+            name=self.dataset_name, mode="write", identifiers=identifiers
         )
         self.move_robot_service_proxy = rospy.ServiceProxy(
             "/gazebo/set_model_state", SetModelState
@@ -157,8 +171,8 @@ class DatasetCollectionNode:
                         xy1.x,
                         xy1.y,
                         0.18,
-                        0,
-                        0,
+                        np.random.uniform(np.deg2rad(-self.max_incl),np.deg2rad(self.max_incl)),
+                        np.random.uniform(np.deg2rad(-self.max_incl),np.deg2rad(self.max_incl)),
                         np.random.uniform(0, 2 * np.pi),
                     )
                     self.move_robot(pose)

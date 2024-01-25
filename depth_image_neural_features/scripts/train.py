@@ -1,12 +1,15 @@
-from depth_image_neural_features.networks import DeepDistEstimator
+from depth_image_neural_features.networks import *
 from depth_image_dataset.dataset import DepthImageDistanceFeaturesDataset
 from torch.utils.data import DataLoader
 import torch
+import numpy as np
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import ExponentialLR
 from tqdm import tqdm
 import os
-torch.set_float32_matmul_precision('high')
+
+torch.set_float32_matmul_precision("high")
 
 
 def calculate_loss(outputs, labels, criterion1, criterion2):
@@ -21,60 +24,77 @@ def calculate_loss(outputs, labels, criterion1, criterion2):
 
 # Setup loging
 logdir = "/home/lorenzo/.tensorboard"
-for file in os.listdir(logdir):
-    os.remove(os.path.join(logdir, file))
+os.popen(f"rm -rf {logdir}/**")
 writer = SummaryWriter(logdir)
+# MODEL
+model = LastHope()
+#model.load_state_dict(torch.load("/home/lorenzo/models/LastHope_lr0.004_bs128_nepochs64_fvsize256_ptchsize8/57.torch"),strict=False)
 # Load dataset:
 dataset = DepthImageDistanceFeaturesDataset(
-    name="depth_image_with_3_stackings", samples_to_generate=1000000
+    name="large_dataset", samples_to_generate=50,samples_to_load=800000
 )
-criterion1 = nn.MSELoss(3)
-criterion2 = nn.MSELoss(4)
+criterion1 = nn.MSELoss(2,reduction="mean")
 # Training loop
-bs = 64
-n_epochs = 64
-alfa = 0.3
-beta = 0.5
-for lr in tqdm([0.0001], desc="Lr"):
-    model = DeepDistEstimator().to("cuda")
-    model =torch.compile(model)
+n_epochs = 128
+bs = 128
+image_size = 128
+patch_size = 8
+num_layers = 8
+num_heads = 8
+hidden_dims = 32
+mlp_dim = 256
+dropout = 0.1
+attention_dropout = 0.1
+feature_length = 256
+lr = 0.004
+for n_samples in [2000000]:
+    dataset.samples_to_generate = n_samples
+    dataset.process_raw_inputs()
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [0.9,0.1])
+    train_dataloader = DataLoader(train_dataset, bs, shuffle=True)
+    save_dir = f"/home/lorenzo/models/retrain_last_hope_with_dropout"
+    os.makedirs(save_dir,exist_ok=True)
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     counter = 0
-    for n_epoch in tqdm(range(n_epochs), desc="Epoch", leave=False):
-        dataloader = DataLoader(dataset, bs, shuffle=True)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    lr_scheduler = ExponentialLR(optimizer,0.95)
+    for n_epoch in tqdm(range(n_epochs), desc="Epoch", leave=True):
         model.to("cuda")
-        for sample in tqdm(dataloader, leave=False):
+        for sample in tqdm(train_dataloader, leave=True):
+            model.train()
             # Get data
             (img1, img2), labels = sample
             img1 = img1.to("cuda")
             img2 = img2.to("cuda")
+            noise1 = torch.tensor(np.random.normal(size=img1.shape)*2/100 +1).to("cuda")
+            noise2 = torch.tensor(np.random.normal(size=img2.shape)*2/100 +1).to("cuda")
+            img1 *= noise1
+            img2 *= noise2
             labels = labels.to("cuda")
             # Forward pass
             optimizer.zero_grad()
-            outputs, aux_outputs1, aux_outputs2 = model(img1, img2)
+            result = model(img1, img2)
             # calculate loss
-            main_pose_loss, main_orientation_loss = calculate_loss(outputs,         labels, criterion1, criterion2)
-            aux1_pose_loss, aux1_orientation_loss = calculate_loss(aux_outputs1,    labels, criterion1, criterion2)
-            aux2_pose_loss, aux2_orientation_loss = calculate_loss(aux_outputs2,    labels, criterion1, criterion2)
-            main_loss = main_pose_loss + beta*main_orientation_loss
-            aux1_loss = aux1_pose_loss + beta*aux1_orientation_loss
-            aux2_loss = aux2_pose_loss + beta*aux2_orientation_loss
-            total_loss = main_loss + (aux1_loss  + aux2_loss) * alfa
-            total_loss.backward()
+            train_loss = criterion1(result, labels)
+            train_loss.backward()
             optimizer.step()
-            writer.add_scalar(f"{lr}/total_loss", total_loss, counter)
-            writer.add_scalar(f"{lr}/main_loss/total", main_loss, counter)
-            writer.add_scalar(f"{lr}/main_loss/pose", main_pose_loss, counter)
-            writer.add_scalar(f"{lr}/main_loss/orientation", main_orientation_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_1/total", aux1_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_1/pose", aux1_pose_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_1/orientation", aux1_orientation_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_2/total", aux2_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_2/pose", aux2_pose_loss, counter)
-            writer.add_scalar(f"{lr}/aux_loss_2/orientation", aux2_orientation_loss, counter)
+            writer.add_scalars(f"{n_samples}/results",{"lx":labels[0,0],"rx":result[0,0],"ly":labels[0,1],"ry":result[0,1]}, counter)
             counter += 1
+            # test data
+            (img1, img2), labels = test_dataset[np.random.randint(0,len(test_dataset))]
+            img1 = img1.to("cuda")
+            img2 = img2.to("cuda")
+                # Add batch dimension
+            img1 = torch.unsqueeze(img1,0) 
+            img2 = torch.unsqueeze(img2,0)
+            labels = torch.unsqueeze(labels,0)
+            labels = labels.to("cuda")
+            model = model.eval()
+            result = model(img1, img2)
+            test_loss = criterion1(result, labels)
+            writer.add_scalars(f"{n_samples}/loss",{"train_loss":train_loss,"test_loss":test_loss}, counter)
+        lr_scheduler.step()
         torch.save(
             model.to("cpu").state_dict(),
-            f"/home/lorenzo/models/{model.__class__.__name__}_{lr}_{bs}_{alfa}_{beta}.torch",
+            os.path.join(save_dir,f"{n_epoch}.torch")
         )
