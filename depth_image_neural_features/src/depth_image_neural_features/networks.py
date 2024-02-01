@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from depth_image_dataset.dataset import DepthImageDistanceFeaturesDataset
 from torchinfo import summary
 from torch.utils.data import DataLoader
 from depth_image_neural_features.googlenet import GoogLeNetCompressor
@@ -9,7 +8,6 @@ from depth_image_neural_features.transformer import (
     TransformerEncoder,
     TransformerEncoderLayer,
 )
-from depth_image_neural_features.vis_transf import VisionTransformer
 
 
 class FcDistanceEstimator(nn.Module):
@@ -138,109 +136,3 @@ class LastHope(nn.Module):
             z1 = z1 + torch.normal(0,0.5,size=z1.shape).to("cuda")
             z2 = z2 + torch.normal(0,0.5,size=z2.shape).to("cuda")
         return self.compare_features(z1, z2)
-#data =torch.rand((1,1,16,1024))
-#summary(LastHope(),input_data=(data,data))
-#exit()
-class TransformerAndFc(nn.Module):
-    def __init__(
-        self,
-        image_size,
-        patch_size,
-        num_layers,
-        num_heads,
-        hidden_dim,
-        mlp_dim,
-        dropout,
-        attention_dropout,
-        feature_length,
-    ):
-        super(type(self), self).__init__()
-        self.transformer = VisionTransformer(
-            image_size=image_size,
-            patch_size=patch_size,
-            num_layers=num_layers,
-            num_heads=num_heads,
-            hidden_dim=hidden_dim,
-            mlp_dim=mlp_dim,
-            dropout=dropout,
-            attention_dropout=attention_dropout,
-            num_classes=feature_length,
-        )
-        self.fc1 = nn.Linear(int(feature_length), feature_length)
-        self.fc2 = nn.Linear(int(feature_length), int(feature_length / 2))
-        self.fc3 = nn.Linear(int(feature_length / 2), int(feature_length / 2))
-        self.fc4 = nn.Linear(int(feature_length / 2), 2)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(dropout)
-
-    def compress(self, x):
-        return self.transformer(x)
-
-    def dist(self, x, y):
-        z = torch.cat((x, y), 1)
-        z = self.dropout(self.relu(self.fc1(z)))
-        z = self.dropout(self.relu(self.fc2(z)))
-        z = self.dropout(self.relu(self.fc3(z)))
-        z = self.fc4(z)
-        return z
-
-    def forward(self, x, y):
-        x = self.compress(x)
-        y = self.compress(y)
-        return self.dist(x, y)
-
-
-class TransformerAndFcDiff(nn.Module):
-    def __init__(
-        self,
-        image_size,
-        patch_size,
-        num_layers,
-        num_heads,
-        hidden_dim,
-        mlp_dim,
-        dropout,
-        attention_dropout,
-        feature_length,
-    ):
-        super(type(self), self).__init__()
-        self.transformer = VisionTransformer(
-            image_size=image_size,
-            patch_size=patch_size,
-            num_layers=num_layers,
-            num_heads=num_heads,
-            hidden_dim=hidden_dim,
-            mlp_dim=mlp_dim,
-            dropout=dropout,
-            attention_dropout=attention_dropout,
-            num_classes=feature_length,
-        )
-        self.fc1 = nn.Linear(int(feature_length), int(feature_length * 2))
-        self.fc2 = nn.Linear(int(feature_length * 2), int(feature_length))
-        self.fc3 = nn.Linear(int(feature_length), int(feature_length / 2))
-        self.fc4 = nn.Linear(int(feature_length / 2), 2)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-
-    def compress(self, x):
-        return self.transformer(x)
-
-    def dist(self, x, y):
-        z = y - x
-        z = self.dropout(self.relu(self.fc1(z)))
-        z = self.dropout(self.relu(self.fc2(z)))
-        z = self.dropout(self.relu(self.fc3(z)))
-        z = self.fc4(z)
-        return z
-
-    def forward(self, x, y):
-        x = self.compress(x)
-        y = self.compress(y)
-        return self.dist(x, y)
-
-
-if __name__ == "__main__":
-    img = torch.ones((10, 1, 128, 128)).to("cuda")
-    model = TransformerAndFc().to("cuda")
-    summary(model, input_data=(img, img))
-    model.train()
