@@ -9,7 +9,7 @@ description = "Neural networks for depth image features extraction"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = ["Programming Language :: Python :: 3"]
-dependencies = ["numpy", "torch", "torchinfo"]
+dependencies = ["numpy", "torch", "torchinfo", "neptune"]
 [tool.hatch.build]
 only-packages = true
 sources = ["src"]
