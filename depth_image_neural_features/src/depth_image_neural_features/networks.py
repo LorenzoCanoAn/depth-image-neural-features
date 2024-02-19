@@ -132,7 +132,7 @@ class LastHope(nn.Module):
     def forward(self, img1, img2):
         z1 = self.compress(img1)
         z2 = self.compress(img2)
-        if False:#self.training:
+        if self.training:
             z1 = z1 + torch.normal(0,0.5,size=z1.shape).to("cuda")
             z2 = z2 + torch.normal(0,0.5,size=z2.shape).to("cuda")
         return self.compare_features(z1, z2)
