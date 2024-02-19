@@ -1,37 +1,39 @@
 <launch>
-    <arg name='pointcloud_topic' default='/points'/>
-    <arg name='image_topic' default='/depth_image'/>
-    <arg name='height' default='16'/>
-    <arg name='width' default='1024'/>
-    <arg name="max_vertical_angle" value="15.0"/>
-    <arg name="min_vertical_angle" value="-15.0"/>
-    <arg name="max_horizontal_angle" value="180.0"/>
-    <arg name="min_horizontal_angle" value="-180.0"/>
-    <arg name='max_distance' default='30'/>
-    <arg name='invert_distance' default='True'/>
-    <arg name='normalize_image' default='True'/>
-    <arg name='path_to_model' default='$(env HOME)/models/retrain_last_hope_with_dropout/last.torch'/>
-    <arg name='distance_estimation' default='distance_estimation'/>
-    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find lidar_to_other)/config/rosconsole/debug.conf"/>
-    <env name="HUSKY_LASER_3D_ENABLED" value="true"/>
+    <arg name='pointcloud_topic' default='/velodyne_points' />
+    <arg name='image_topic' default='/depth_image' />
+    <arg name='height' default='16' />
+    <arg name='width' default='1024' />
+    <arg name="max_vertical_angle" value="15.0" />
+    <arg name="min_vertical_angle" value="-15.0" />
+    <arg name="max_horizontal_angle" value="180.0" />
+    <arg name="min_horizontal_angle" value="-180.0" />
+    <arg name='max_distance' default='30' />
+    <arg name='invert_distance' default='True' />
+    <arg name='normalize_image' default='True' />
+    <arg name='path_to_model' default='$(env HOME)/models/retrain_last_hope_with_dropout/last.torch' />
+    <arg name='distance_estimation' default='distance_estimation' />
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find lidar_to_other)/config/rosconsole/debug.conf" />
+    <env name="HUSKY_LASER_3D_ENABLED" value="true" />
 
-    <node name='ptcl_to_depth_image' type="pointcloud_to_depth_image" pkg="lidar_to_other" output="screen">
-        <param name="input_topic" value="$(arg pointcloud_topic)"/>
-        <param name="output_topic" value="$(arg image_topic)"/>
-        <param name="height" value="$(arg height)"/>
-        <param name="width" value="$(arg width)"/>
-        <param name="max_vertical_angle" value="$(arg max_vertical_angle)"/>
-        <param name="min_vertical_angle" value="$(arg min_vertical_angle)"/>
-        <param name="max_horizontal_angle" value="$(arg max_horizontal_angle)"/>
-        <param name="min_horizontal_angle" value="$(arg min_horizontal_angle)"/>
-        <param name="max_distance" value="$(arg max_distance)"/>
-        <param name="invert_distance" value="$(arg invert_distance)"/>
-        <param name="normalize_image" value="$(arg normalize_image)"/>
+    <node name='ptcl_to_depth_image' type="pointcloud_to_depth_image" pkg="lidar_to_other"
+        output="screen">
+        <param name="input_topic" value="$(arg pointcloud_topic)" />
+        <param name="output_topic" value="$(arg image_topic)" />
+        <param name="height" value="$(arg height)" />
+        <param name="width" value="$(arg width)" />
+        <param name="max_vertical_angle" value="$(arg max_vertical_angle)" />
+        <param name="min_vertical_angle" value="$(arg min_vertical_angle)" />
+        <param name="max_horizontal_angle" value="$(arg max_horizontal_angle)" />
+        <param name="min_horizontal_angle" value="$(arg min_horizontal_angle)" />
+        <param name="max_distance" value="$(arg max_distance)" />
+        <param name="invert_distance" value="$(arg invert_distance)" />
+        <param name="normalize_image" value="$(arg normalize_image)" />
     </node>
 
-    <node name='network_testing_node' type="test_network.py" pkg="depth_image_neural_features_ros" output="screen">
-        <param name="path_to_model" value="$(arg path_to_model)"/>
-        <param name="image_input_topic" value="$(arg image_topic)"/>
-        <param name="distance_estimation_output_topic" value="$(arg distance_estimation)"/>    
+    <node name='network_testing_node' type="test_network.py" pkg="depth_image_neural_features_ros"
+        output="screen">
+        <param name="path_to_model" value="$(arg path_to_model)" />
+        <param name="image_input_topic" value="$(arg image_topic)" />
+        <param name="distance_estimation_output_topic" value="$(arg distance_estimation)" />
     </node>
 </launch>
